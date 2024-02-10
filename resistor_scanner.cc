@@ -1,8 +1,8 @@
 #include <opencv2/imgcodecs.hpp>
 
 #include <iostream>
-#include <string>
 #include <spdlog/spdlog.h>
+#include <string>
 
 int main(int argc, char** argv)
 {
