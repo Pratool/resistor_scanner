@@ -7,17 +7,21 @@ namespace color
 {
 
 /// BGR representation
-constexpr std::array<float, 3> black_v = {25, 25, 25};
+constexpr std::array<float, 3> black_v = {18, 18, 18};
 constexpr std::array<float, 3> red_v = {4, 8, 67};
-constexpr std::array<float, 3> blue_v = {0, 255, 0};
+constexpr std::array<float, 3> blue_v = {31, 18, 1};
 constexpr std::array<float, 3> brown_v = {13, 29, 52};
 constexpr std::array<float, 3> white_v = {198, 198, 198};
+constexpr std::array<float, 3> yellow_v = {2, 31, 24};
+constexpr std::array<float, 3> orange_v = {14, 31, 51};
 
 enum class Color
 {
   black = 0,
   brown = 1,
   red = 2,
+  orange = 3,
+  yellow = 4,
   blue = 6,
   white = 9
 };

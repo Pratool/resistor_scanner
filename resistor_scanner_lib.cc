@@ -11,12 +11,16 @@ namespace color
   {
     case Color::black:
       return "black";
-    case Color::red:
-      return "red";
-    case Color::blue:
-      return "blue";
     case Color::brown:
       return "brown";
+    case Color::red:
+      return "red";
+    case Color::orange:
+      return "orange";
+    case Color::yellow:
+      return "yellow";
+    case Color::blue:
+      return "blue";
     case Color::white:
       return "white";
   }
@@ -69,6 +73,12 @@ remove_background(const std::vector<color::Color>& resistor_colors)
         break;
       case Color::red:
         value.tolerance_percent = 2;
+        break;
+      case Color::orange:
+        value.tolerance_percent = 0.05;
+        break;
+      case Color::yellow:
+        value.tolerance_percent = 0.02;
         break;
       case Color::blue:
         value.tolerance_percent = 0.25;

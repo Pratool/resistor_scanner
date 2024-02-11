@@ -3,6 +3,7 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
@@ -13,6 +14,8 @@
 
 int main(int argc, char** argv)
 {
+  spdlog::cfg::load_env_levels();
+
   if (argc < 2)
   {
     spdlog::critical("Input resistor image path not provided");
@@ -39,6 +42,7 @@ int main(int argc, char** argv)
   {
     const auto height_sample = height_samples.at(band_idx);
     auto& band_category = band_categories[band_idx];
+    spdlog::debug("band {}", band_idx + 1);
 
     for (int32_t idx = 0; idx < img_size.width; ++idx)
     {
@@ -47,6 +51,7 @@ int main(int argc, char** argv)
       if (color::magnitude(v.val) < color::magnitude(color::black_v))
       {
         img.at<cv::Vec3b>(height_sample, idx) = cv::Vec3b(0, 0, 0);
+        spdlog::debug("black");
         band_category.push_back(color::Color::black);
         continue;
       }
@@ -58,28 +63,47 @@ int main(int argc, char** argv)
         continue;
       }
 
-      const auto red_similar = color::similar(color::red_v, v.val);
-      const auto blue_similar = color::similar(color::blue_v, v.val);
-      const auto brown_similar = color::similar(color::brown_v, v.val);
+      using color::Color;
+      using ColorTuple = std::tuple<Color, float, std::array<float, 3U>>;
 
-      if (blue_similar > red_similar && blue_similar > brown_similar)
+      const std::array<ColorTuple, 5U> color_similarities = {
+          ColorTuple(Color::red, color::similar(color::red_v, v.val), color::red_v),
+          ColorTuple(Color::blue, color::similar(color::blue_v, v.val), color::blue_v),
+          ColorTuple(Color::brown, color::similar(color::brown_v, v.val), color::brown_v),
+          ColorTuple(Color::orange, color::similar(color::orange_v, v.val), color::orange_v),
+          ColorTuple(Color::yellow, color::similar(color::yellow_v, v.val), color::yellow_v)};
+
+      const auto similar_itr = std::max_element(
+          std::cbegin(color_similarities), std::cend(color_similarities),
+          [](const auto& lhs, const auto& rhs) { return std::get<1>(lhs) < std::get<1>(rhs); });
+      spdlog::debug("{} = {} correlation", color::color_name(std::get<0>(*similar_itr)),
+                    std::get<1>(*similar_itr));
+
+      // Highlight the selected color in the source image.
+      auto s = std::get<2>(*similar_itr);
+      if (std::get<0>(*similar_itr) == Color::blue)
       {
-        img.at<cv::Vec3b>(height_sample, idx) = cv::Vec3b(255, 0, 0);
-        band_category.push_back(color::Color::blue);
-        continue;
+        s = std::array<float, 3>({255, 0, 0});
+      }
+      else if (std::get<0>(*similar_itr) == Color::red)
+      {
+        s = std::array<float, 3>({0, 0, 255});
+      }
+      else if (std::get<0>(*similar_itr) == Color::yellow)
+      {
+        s = std::array<float, 3>({100, 96, 36});
+      }
+      else if (std::get<0>(*similar_itr) == Color::orange)
+      {
+        s = std::array<float, 3>({8, 45, 87});
       }
 
-      if (red_similar > brown_similar)
-      {
-        img.at<cv::Vec3b>(height_sample, idx) = cv::Vec3b(0, 0, 255);
-        band_category.push_back(color::Color::red);
-        continue;
-      }
-
-      img.at<cv::Vec3b>(height_sample, idx) = cv::Vec3b(0x34, 0x5c, 0x79);
-      band_category.push_back(color::Color::brown);
+      img.at<cv::Vec3b>(height_sample, idx) = cv::Vec3b(s[0], s[1], s[2]);
+      band_category.push_back(std::get<0>(*similar_itr));
     }
   }
+
+  cv::imwrite("test.jpg", img);
 
   constexpr float agreement_width_ratio = 0.035f;
   const uint32_t agreement_width =
@@ -131,9 +155,15 @@ int main(int argc, char** argv)
       colors.push_back(band);
     }
   }
+  std::stringstream ss;
+  for (const auto& c : colors)
+  {
+    ss << color::color_name(c) << ' ';
+  }
+  spdlog::info("colors with background: {}", ss.str());
 
   colors = rscan::remove_background(colors);
-  std::stringstream ss;
+  ss.clear();
   for (const auto& c : colors)
   {
     ss << color::color_name(c) << ' ';
