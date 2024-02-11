@@ -13,12 +13,17 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(OpenCV 4.1 REQUIRED)
 find_package(spdlog REQUIRED)
 
+add_library(resistor_scanner_lib
+  resistor_scanner_lib.cc
+)
+
 add_executable(resistor_scanner
   resistor_scanner.cc
 )
 
 target_link_libraries(resistor_scanner
   ${OpenCV_LIBS}
+  resistor_scanner_lib
   spdlog::spdlog
 )
 

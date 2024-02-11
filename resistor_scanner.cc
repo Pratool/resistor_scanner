@@ -1,3 +1,5 @@
+#include "resistor_scanner_lib.hh"
+
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -8,60 +10,6 @@
 #include <optional>
 #include <string>
 #include <vector>
-
-namespace color
-{
-
-/// BGR representation
-constexpr std::array<float, 3> black_v = {25, 25, 25};
-constexpr std::array<float, 3> red_v = {4, 8, 67};
-constexpr std::array<float, 3> blue_v = {0, 255, 0};
-constexpr std::array<float, 3> brown_v = {13, 29, 52};
-constexpr std::array<float, 3> white_v = {198, 198, 198};
-
-enum class Color : uint32_t
-{
-  black = 0,
-  red,
-  blue,
-  brown,
-  white
-};
-
-[[nodiscard]] const char* color_name(const Color c)
-{
-  switch (c)
-  {
-    case Color::black:
-      return "black";
-    case Color::red:
-      return "red";
-    case Color::blue:
-      return "blue";
-    case Color::brown:
-      return "brown";
-    case Color::white:
-      return "white";
-  }
-  return "unknown";
-}
-
-template <typename T> [[nodiscard]] double magnitude(const T& color)
-{
-  return std::cbrt(static_cast<double>(color[0]) * color[0] +
-                   static_cast<double>(color[1]) * color[1] +
-                   static_cast<double>(color[2]) * color[2]);
-};
-
-template <typename T1, typename T2> [[nodiscard]] double similar(const T1& color1, const T2& color2)
-{
-  const auto dot_product = color1[0] * static_cast<double>(color2[0]) +
-                           color1[1] * static_cast<double>(color2[1]) +
-                           color1[2] * static_cast<double>(color2[2]);
-  return dot_product / (magnitude(color1) * magnitude(color2));
-};
-
-} // end namespace color
 
 int main(int argc, char** argv)
 {
@@ -87,7 +35,6 @@ int main(int argc, char** argv)
                                                   static_cast<uint32_t>(0.67 * height)};
   std::array<std::vector<color::Color>, 3> band_categories = {};
 
-  // Get average color value from each band and then perform color comparison
   for (uint32_t band_idx = 0; band_idx < height_samples.size(); ++band_idx)
   {
     const auto height_sample = height_samples.at(band_idx);
@@ -141,7 +88,6 @@ int main(int argc, char** argv)
   std::vector<color::Color> colors;
   std::optional<color::Color> prev;
   uint32_t agreement_count = 0;
-  std::stringstream ss;
   for (uint32_t idx = 0; idx < band_categories.front().size(); ++idx)
   {
     const auto top = band_categories.at(0).at(idx);
@@ -183,12 +129,20 @@ int main(int argc, char** argv)
     if (agreement_count >= agreement_width && (colors.size() == 0 || colors.back() != band))
     {
       colors.push_back(band);
-      ss << color::color_name(band) << ' ';
     }
   }
 
+  colors = rscan::remove_background(colors);
+  std::stringstream ss;
+  for (const auto& c : colors)
+  {
+    ss << color::color_name(c) << ' ';
+  }
   spdlog::info("colors: {}", ss.str());
-  cv::imwrite("test.jpg", img);
+
+  const auto resistor_value = rscan::calculate_resistor(colors);
+  spdlog::info("resistance: {} ohms", resistor_value.resistance_ohms);
+  spdlog::info("tolerance: {}%", resistor_value.tolerance_percent);
 
   return 0;
 }
